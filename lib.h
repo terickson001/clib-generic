@@ -99,7 +99,12 @@ typedef struct ArrayHeader {
         ARRAY_HEADER(*(arr_ref))->size = new_size;      \
     } while (0)
           
-#define array_grow(arr_ref) array_set_capacity(arr_ref, ARRAY_GROWTH(array_size(*(arr_ref))))
+#define array_grow(arr_ref, min_cap) do {                               \
+        isize new_cap = ARRAY_GROWTH(array_size(*(arr_ref)));           \
+        if (new_cap < min_cap)                                          \
+            new_cap = min_cap;                                          \
+        array_set_capacity(arr_ref, new_cap);                           \
+    } while (0)
 
 #define array_reserve(arr_ref, cap) do {                \
         if (array_capacity(*(arr_ref)) < (cap))         \
@@ -111,7 +116,7 @@ typedef struct ArrayHeader {
 #define array_append(arr_ref, x) do {                           \
         ArrayHeader *header = (ARRAY_HEADER(*(arr_ref)));       \
         if (header->capacity == header->size)                   \
-            array_grow(arr_ref);                                \
+            array_grow(arr_ref, 0);                             \
         (*(arr_ref))[array_size(*(arr_ref))++] = (x);           \
     } while (0)
 
@@ -119,9 +124,9 @@ typedef struct ArrayHeader {
         ArrayHeader *header = ARRAY_HEADER(*(arr_ref));                 \
         assert(sizeof((items)[0]) == sizeof((*(arr_ref))[0]));          \
         if (header->capacity < header->size+(item_count))               \
-            array_grow(*(arr_ref), header->size+(item_count));          \
-        memcpy(&(*(arr_ref))[header->size], (items), size_of((*(arr_ref)[0])*(item_count)); \
-        header->size += (item_count);                                   \
+            array_grow(arr_ref, header->size+(item_count));             \
+        memcpy(&(*(arr_ref))[array_size(*(arr_ref))], (items), sizeof(*(arr_ref)[0])*(item_count)); \
+        array_size(*(arr_ref)) += (item_count);                         \
     } while (0)
 
 #define array_free(arr) do {                \
