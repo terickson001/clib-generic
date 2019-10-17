@@ -33,6 +33,9 @@ typedef i8  b8;
 typedef i16 b16;
 typedef i32 b32;
 
+typedef float  f32;
+typedef double f64;
+
 typedef u8 byte;
 
 #if !defined(__cplusplus)
@@ -62,6 +65,39 @@ typedef uintptr_t uintptr;
 	#else
 		#define force_inline __attribute__ ((__always_inline__)) inline
 	#endif
+#endif
+
+//
+// Simple Macros
+//
+#define MIN(x, y)   ((x) < (y) ? (x) : (y))
+#define MAX(x, y)   ((x) > (y) ? (x) : (y))
+#define CLAMP(x, low, high) ( ((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)) )
+#define ABS(x) ((x)<0?-(x):(x))
+#define SIGNUM(x) ((x)<0?-1:1)
+
+//
+// String Processing
+//
+b32 char_is_alpha(char c);
+b32 char_is_numeric(char c);
+b32 char_is_alphanum(char c);
+
+#if defined(_LIB_IMPLEMENTATION) && !defined(_LIB_IMPLEMENTED)
+b32 char_is_alpha(char c)
+{
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
+}
+
+b32 char_is_numeric(char c)
+{
+    return '0' <= c && c <= '9';
+}
+
+b32 char_is_alphanum(char c)
+{
+    return char_is_alpha(c) || char_is_numeric(c);
+}
 #endif
 
 //
@@ -398,6 +434,7 @@ typedef struct HashmapSearchResult
 #define HASHMAP(NAME, FUNC, VALUE)              \
     HASHMAP_DEC(NAME, FUNC, VALUE);             \
     HASHMAP_DEF(NAME, FUNC, VALUE);
+
 //
 // File Manipulation
 //
@@ -507,6 +544,8 @@ b32 file_write(File *f, void const *buffer, isize size);
 
 FileContents get_file_contents(char const *filepath);
 void free_file_contents(FileContents *fc);
+
+b32 file_exists(char const *filepath);
 
 #if defined(_LIB_IMPLEMENTATION) && !defined(_LIB_IMPLEMENTED)
 FileError _nix_file_open(char const *filename, FileMode mode, FileDescriptor *fd)
@@ -664,7 +703,7 @@ force_inline b32 file_read_at(File *f, void *buffer, isize size, i64 offset)
 
 force_inline b32 file_read_check(File *f, void *buffer, isize size, i64 *bytes_read)
 {
-    i64 temp_read;
+    i64 temp_read = 0;
     b32 res = _nix_file_read(f->fd, buffer, size, file_tell(f), &temp_read);
     _nix_file_seek(f->fd, temp_read, SeekWhence_CURRENT, 0);
     if (bytes_read) *bytes_read = temp_read;
@@ -733,7 +772,7 @@ force_inline b32 file_write_at(File *f, void const *buffer, isize size, i64 offs
 
 force_inline b32 file_write_check(File *f, void const *buffer, isize size, i64 *bytes_written)
 {
-    i64 temp_written;
+    i64 temp_written = 0;
     b32 res = _nix_file_write(f->fd, buffer, size, file_tell(f), &temp_written);
     _nix_file_seek(f->fd, temp_written, SeekWhence_CURRENT, 0);
     if (bytes_written) *bytes_written = temp_written;
@@ -775,7 +814,61 @@ void free_file_contents(FileContents *fc)
     fc->size = 0;
 }
 
-#define _LIB_IMPLEMENTED
+#endif
+
+b32 path_is_absolute(char const *path);
+b32 path_is_relative(char const *path);
+b32 path_is_root(char const *path);
+char const *path_base_name(char const *path);
+char const *path_extension(char const *path);
+
+#if defined(_LIB_IMPLEMENTATION) && !defined(_LIB_IMPLEMENTED)
+b32 path_is_absolute(char const *path)
+{
+    if (!path) return false;
+    return strlen(path) > 0 && path[0] == '/';
+}
+
+b32 path_is_relative(char const *path)
+{
+    return !path_is_absolute(path);
+}
+
+b32 path_is_root(char const *path)
+{
+    if (!path) return false;
+    return strlen(path) == 1 && path[0] == '/';
+}
+
+char const *path_base_name(char const *path)
+{
+    char const *ls = 0;
+    char const *curr = path;
+    while (*curr)
+    {
+        if (*curr == '/')
+            ls = curr;
+        curr++;
+    }
+    return ls ? ls+1 : path;
+}
+
+char const *path_extension(char const *path)
+{
+    char const *ld = 0;
+    char const *curr = path;
+    while (*curr)
+    {
+        if (*curr == '.')
+            ld = curr;
+        curr++;
+    }
+    return ld ? ld+1 : path;
+}
+#endif
+
+#ifdef _LIB_IMPLEMENTATION    
+# define _LIB_IMPLEMENTED
 #endif
 
 #endif // _LIB_H
