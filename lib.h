@@ -77,6 +77,26 @@ typedef uintptr_t uintptr;
 #define SIGNUM(x) ((x)<0?-1:1)
 
 //
+// Debug Trap
+//
+#ifndef DEBUG_TRAP
+	#if defined(_MSC_VER)
+	 	#if _MSC_VER < 1300
+		#define DEBUG_TRAP() __asm int 3
+		#else
+		#define DEBUG_TRAP() __debugbreak()
+		#endif
+	#else
+		#define DEBUG_TRAP() __builtin_trap()
+	#endif
+#endif
+
+#define PANIC(msg) do {                                                 \
+        printf(stderr, "%s(%d): PANIC: %s\n", __FILE__, __LINE__, msg); \
+        DEBUG_TRAP();                                                   \
+    } while(0);
+
+//
 // String Processing
 //
 b32 char_is_alpha(char c);
@@ -129,12 +149,12 @@ typedef struct ArrayHeader {
 
 #define array_set_capacity(arr_ref, cap) _array_set_capacity((void**)(arr_ref), cap, sizeof(**(arr_ref)))
 
-#define array_set_size(arr_ref, new_size) do {          \
+#define array_set_size(arr_ref, new_size) do { \
         if (array_capacity(*(arr_ref)) < (new_size))    \
             array_set_capacity(arr_ref, (new_size));    \
         ARRAY_HEADER(*(arr_ref))->size = new_size;      \
     } while (0)
-          
+
 #define array_grow(arr_ref, min_cap) do {                               \
         isize new_cap = ARRAY_GROWTH(array_size(*(arr_ref)));           \
         if (new_cap < min_cap)                                          \
@@ -164,6 +184,8 @@ typedef struct ArrayHeader {
         memcpy(&(*(arr_ref))[array_size(*(arr_ref))], (items), sizeof(*(arr_ref)[0])*(item_count)); \
         array_size(*(arr_ref)) += (item_count);                         \
     } while (0)
+
+#define array_pop(arr_ref) (*(arr_ref))[--array_size(*(arr_ref))])
 
 #define array_free(arr) do {                \
         if (!arr)                           \
